@@ -1,0 +1,37 @@
+services:
+    # scylla:
+    #   image: scylladb/scylla:latest
+    #   container_name: scylla
+    #   restart: always
+    #   ports:
+    #     - "9042:9042"
+    #   volumes:
+    #     - scylla_data1:/var/lib/scylla
+    #   networks:
+    #     - scylla-network
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -f http://localhost:10000/metrics || exit 1"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+
+    queueb:
+        image: maxwellmichael/paradisbend:QB-Latest
+        container_name: queueb
+        restart: always
+        ports:
+            - "3000:3000"
+        networks:
+            - scylla-network
+        environment:
+            - SCYLLA_HOST=scylla
+        depends_on:
+            - scylla
+    scylla:
+        condition: service_healthy
+
+# volumes:
+#     scylla_data1:
+
+networks:
+    scylla-network:
