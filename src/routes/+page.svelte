@@ -80,8 +80,8 @@
         "128,255,255",
     ];
 
-    let scoreboard: any[] = [];
-    let pscoreboard: any[] = [];
+    let sbs: any[] = [];
+    let scoreboard = {now: sbs, prev: sbs, hof: sbs };
 
     export let daily: any[] = Array.from({ length: 25 }, (_, index) => index);
 
@@ -232,6 +232,18 @@
             score: score,
         };
         localStorage.setItem("gameState", JSON.stringify(gameState));
+        let data = {
+            "username": username,
+            "count": current,
+            "score": score,
+            "cube": JSON.stringify(cube),
+        }
+        axios.post('/api/score', data).then((res) => {
+            console.log(res.data);
+        })
+        .catch((error) => {
+            console.error('Error fetching data:', error);
+        });
     };
 
     let reset = () => {
@@ -239,6 +251,7 @@
         current = 0;
         gameOver = false;
         score = 0;
+
 
         let gameState = {
             cube: cube,
@@ -248,7 +261,15 @@
             score: score,
         };
         localStorage.setItem("gameState", JSON.stringify(gameState));
+        gameSetup();
     };
+
+    axios.get('/api/scoreboard').then((res) => {
+        scoreboard = res.data;
+    })
+    .catch((error) => {
+        if(error.code != 'ERR_INVALID_URL') console.error('Error fetching scoreboard:', error);
+    });
 
     onMount(() => {
         username = localStorage.getItem("username") || "";
@@ -328,7 +349,7 @@
         {#each cube as c, index}
             {#each c as x, i}
                 <div class="cube" style={makeCube(x)}>
-                    {#if root[0] == index && root[1] == i && !gameEnding && start}
+                    {#if root[0] == index && root[1] == i && !gameEnding && !gameOver && start}
                         <div class="activeBlock">
                             {#each block[rotation] as b}
                                 <div
@@ -415,6 +436,63 @@
         </div>
     </div>
 
+    <div class='scores'>
+        <div class="fifty">
+            <h2>Todays Top 10</h2>
+            <div>
+                <div class='scoreTile underline'>
+                    <div class="username">Player</div>
+                    <div class="score">Count</div>
+                    <div class="score">Score</div>
+                </div>
+                {#each scoreboard.now as sc}
+                    <div class='scoreTile'>
+                        <div class="username">{sc.username}</div>
+                        <div class="score">{sc.count}</div>
+                        <div class="score">{sc.score}</div>
+                    </div>
+                {/each}
+            </div>
+        </div>
+
+        <div class="fifty">
+            <h2>Last Top 10</h2>
+            <div>
+                <div class='scoreTile underline'>
+                    <div class="username">Player</div>
+                    <div class="score">Count</div>
+                    <div class="score">Score</div>
+                </div>
+                {#each scoreboard.prev as sc}
+                    <div class='scoreTile'>
+                        <div class="username">{sc.username}</div>
+                        <div class="score">{sc.count}</div>
+                        <div class="score">{sc.score}</div>
+                    </div>
+                {/each}
+            </div>
+        </div>
+    </div>
+
+    <div class="scores hof">
+        <h2>Hall Of Fame</h2>
+        <div class='scoreTile underline hof2'>
+            <div class="username">Player</div>
+            <div class="score">Date</div>
+            <div class="score">Count</div>
+            <div class="score">Score</div>
+        </div>
+        {#each scoreboard.hof as sc}
+            <div class='scoreTile hof2'>
+                <div class="username">{sc.username}</div>
+                <div class="score">{sc.day}</div>
+                <div class="score">{sc.count}</div>
+                <div class="score">{sc.score}</div>
+            </div>
+        {/each}
+        <p>**WIP - Hall of Fame Updates Daily**</p>
+    </div>
+
     <div class="footer">
         <img
             style="height: 1rem; margin: 1rem 2px 2px 2px"
@@ -429,7 +507,7 @@
 
 <style>
     h1,
-    p {
+    p, .scores{
         font-family: "Roboto", sans-serif;
         text-align: center;
         color: white;
@@ -565,5 +643,50 @@
     button:hover {
         background-color: rgba(0, 0, 0, 0.1);
         color: white;
+    }
+
+    .scores {
+        display: flex;
+        flex-direction: row;
+        flex-basis: auto;
+        width: 100%;
+        padding-bottom: 5em;
+        margin-bottom: 5em;
+        justify-content: space-around;
+    }
+
+    .fifty {
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .scoreTile {
+        display: flex;
+        flex-direction: row;
+        width: 80vw;
+        max-width: 12em;
+    }
+    .score {
+        text-align: right;
+        width: 30%;
+    }
+    .username {
+        flex-grow: 3;
+        text-align: left;
+    }
+    .underline {
+        border-bottom: 2px solid #ccc;
+    }
+
+    .hof{
+        flex-direction: column;
+    }
+
+    .hof2{
+        width: 90%;
+        max-width: 90%;
+        align-self: center;
+
     }
 </style>

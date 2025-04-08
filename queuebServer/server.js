@@ -5,9 +5,10 @@ const { v4: uuidv4 } = require("uuid");
 const { sydb } = require("./db");
 
 const app = express();
-const port = 3014;
+const port = process.env.PORT || 3014;
 
-//let pScore = [];
+let pScore = [];
+let hof = [];
 
 let blockList = [
     [0, 1, 1, 0, 1, 1, 1, 3, 1, 1, 1, 1, 0, 1, 1, 0],
@@ -102,33 +103,39 @@ async function initBlocks() {
     //console.log(dailyBlocks);
 }
 
-// async function prevScore(){
-//   let day = getDay(-1);
-//   let query = "SELECT * FROM fooble.beta_sbx WHERE day = ? ORDER BY score DESC LIMIT 10;";
-//   let params = [day];
-//   let options = {hints: ['int']};
-//   try {
-//     let {rows} = await client.execute(query, params, options);
-//     pScore = rows;
-//   } catch (err) {
-//     console.error('Prev Score Error:', err);
-//   }
-// }
+async function prevScore(){
+  let day = getDay(-1);
+  let query = "SELECT * FROM qb.scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
+  let params = [day];
+  let options = {hints: ['int']};
+  try {
+    let {rows} = await client.execute(query, params, options);
+    pScore = rows;
+  } catch (err) {
+    console.error('Prev Score Error:', err);
+  }
+  // let hoQuery = "SELECT * FROM qb.scores ORDER BY score DESC LIMIT 10;";
+  // try {
+  //   let {rows} = await client.execute(hoQuery);
+  //   hof = rows;
+  // } catch (err) {
+  //   console.error('HoF Score Error:', err);
+  // }
+}
 
 async function initServer() {
     await connectToScylla();
 
     initBlocks();
-    //prevScore();
+    prevScore();
 }
 
 initServer();
 
-//DetermineDailyWord
 setInterval(
     () => {
         initBlocks();
-        //prevScore();
+        prevScore();
     },
     60 * 60 * 1000,
 );
@@ -137,52 +144,49 @@ app.get("/", (req, res) => {
     res.sendFile(path.resolve(__dirname, "dist", "index.html"));
 });
 
-// app.get("/function", async (req, res) => {
-//     res.send(filterStringsByLength());
-// });
-
 app.get("/api/blocks", (req, res) => {
     console.log(dailyBlocks[0]);
     res.send(dailyBlocks);
 });
 
-// app.get("/api/scoreboard", async (req, res) => {
-//     let day = getDay(0);
-//     let query = "SELECT * FROM fooble.beta_sbx WHERE day = ? ORDER BY score DESC LIMIT 10;";
-//     let params = [day];
-//     let options = {hints: ['int']};
-//     try {
-//       let {rows} = await client.execute(query, params, options);
-//       //console.log(rows);
-//       let data = {
-//         'today': rows,
-//         'prev': pScore,
-//       }
-//       res.json(data);
-//     } catch (err) {
-//       console.error('Write error:', err);
-//       console.log('Failed to write data');
-//       res.status(500).send("Failed to retrieve data: " + err.message);
-//     }
-// });
+app.get("/api/scoreboard", async (req, res) => {
+    let day = getDay(0);
+    let query = "SELECT * FROM qb.scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
+    let params = [day];
+    let options = {hints: ['int']};
+    try {
+      let {rows} = await client.execute(query, params, options);
+      //console.log(rows);
+      let data = {
+        'now': rows,
+        'prev': pScore,
+        'hof': hof,
+      }
+      res.json(data);
+    } catch (err) {
+      console.error('Write error:', err);
+      console.log('Failed to write data');
+      res.status(500).send("Failed to retrieve data: " + err.message);
+    }
+});
 
-// app.post("/api/score", async (req, res) => {
-//     const { username, line, score } = req.body;
-//     const id = uuidv4();
-//     console.log(username, line, score);
-//     let day = getDay(0);
-//     let query = "INSERT INTO fooble.beta_sbx(id, username, email, day, line, score) VALUES(?,?,?,?,?,?)";
-//     let params = [id, username, "NA", day, line, score];
-//     let options = { hints: ['uuid', 'text', 'text', 'int', 'int', 'int'] };
-//     try {
-//       await client.execute(query, params, options);
-//       console.log('Score written successfully');
-//     } catch (err) {
-//       console.error('Write error:', err);
-//       console.log('Failed to write data');
-//     }
-//     res.send("Score Recorded");
-// });
+app.post("/api/score", async (req, res) => {
+    const { username, count, score, cube } = req.body;
+    const id = uuidv4();
+    console.log(username, count, score);
+    let day = getDay(0);
+    let query = "INSERT INTO qb.scores(id, username, email, day, count, score, cube) VALUES(?,?,?,?,?,?,?)";
+    let params = [id, username, "NA", day, count, score, cube];
+    let options = { hints: ['uuid', 'text', 'text', 'int', 'int', 'int', 'text'] };
+    try {
+      await client.execute(query, params, options);
+      console.log('Score written successfully');
+    } catch (err) {
+      console.error('Write error:', err);
+      console.log('Failed to write data');
+    }
+    res.send("Score Recorded");
+});
 
 app.get("/api/test", async (req, res) => {
     try {

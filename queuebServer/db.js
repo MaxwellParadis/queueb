@@ -5,10 +5,10 @@ async function sydb(client) {
     let users =
         "CREATE TABLE IF NOT EXISTS qb.users (id UUID PRIMARY KEY, username TEXT, email TEXT);";
     let scores =
-        "CREATE TABLE IF NOT EXISTS qb.scores (id UUID, username TEXT, email TEXT, day INT, count INT, score INT, PRIMARY KEY (day, score, username, id));";
+        "CREATE TABLE IF NOT EXISTS qb.scores (id UUID, username TEXT, email TEXT, day INT, count INT, score INT, cube TEXT, PRIMARY KEY (day, score, username, id));";
     let blocks =
         "CREATE TABLE IF NOT EXISTS qb.blocks (day INT PRIMARY KEY, blocks list<int>);";
-    //let working = "CREATE INDEX ON fooble.beta_score0 (username);"
+    //let drop = "DROP TABLE qb.scores;"
 
     let queries = [keyspace, users, blocks, scores];
 
