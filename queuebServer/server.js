@@ -146,7 +146,8 @@ app.get("/", (req, res) => {
 
 app.get("/api/blocks", (req, res) => {
     console.log(dailyBlocks[0]);
-    res.send(dailyBlocks);
+    let data = {blocks: dailyBlocks, day: getDay(0)}
+    res.send(data);
 });
 
 app.get("/api/scoreboard", async (req, res) => {

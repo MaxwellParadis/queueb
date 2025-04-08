@@ -19,6 +19,7 @@
     let score: number = 0;
     let gameEnding: boolean = false;
     let gameOver: boolean = false;
+    let day: number = 100000;
 
     let fdef: any[] = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
     let cdef: any[] = [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3];
@@ -110,8 +111,9 @@
 
     async function gameSetup() {
         await axios.get('/api/blocks').then((res) => {
-            blocks = res.data;
-            //console.log(blocks);
+            blocks = res.data.blocks;
+            day = res.data.day;
+            //console.log(day);
         })
         .catch((error) => {
             if(error.code != 'ERR_INVALID_URL') console.error('Error fetching data:', error);
@@ -122,8 +124,9 @@
             ? JSON.parse(cacheData)
             : {
                   daily: Array.from({ length: 25 }, (_, index) => index),
+                  day: 100000,
               };
-        if (cacheGame.daily.join("") == daily.join("")) {
+        if (cacheGame.day == day) {
             //playing = cacheGame.playing; gameOver instead of playing
             cube = cacheGame.cube || cube;
             current = cacheGame.current || 0;
@@ -215,6 +218,7 @@
             gameOver: gameOver,
             daily: daily,
             score: score,
+            day: day,
         };
         localStorage.setItem("gameState", JSON.stringify(gameState));
     };
@@ -230,6 +234,7 @@
             gameOver: gameOver,
             daily: daily,
             score: score,
+            day: day,
         };
         localStorage.setItem("gameState", JSON.stringify(gameState));
         let data = {
@@ -259,6 +264,7 @@
             gameOver: gameOver,
             daily: daily,
             score: score,
+            day: day,
         };
         localStorage.setItem("gameState", JSON.stringify(gameState));
         gameSetup();
