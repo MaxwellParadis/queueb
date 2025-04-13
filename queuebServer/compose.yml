@@ -15,18 +15,18 @@ services:
     #   timeout: 10s
     #   retries: 5
 
-    # queueb:
-    #     image: maxwellmichael/paradisbend:QB-Latest
-    #     container_name: queueb
-    #     restart: always
-    #     ports:
-    #         - "3000:3000"
-    #     networks:
-    #         - scylla-network
-    #     environment:
-    #         - SCYLLA_HOST=scylla
-    #     depends_on:
-    #         - scylla
+    queueb:
+        image: maxwellmichael/paradisbend:QB-Latest
+        container_name: queueb
+        restart: always
+        ports:
+            - "3014:3014"
+        networks:
+            - scylla-network
+        environment:
+            - SCYLLA_HOST=scylla
+        depends_on:
+            - scylla
     # scylla:
     #     condition: service_healthy
 

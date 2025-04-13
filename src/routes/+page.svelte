@@ -16,6 +16,11 @@
 
     let locked: boolean = false;
 
+    let shareBoard: boolean = false;
+    let sbi: number = 0;
+    let shareTarget: string = 'now';
+    //let shareBlock: any[] = [];
+
     let score: number = 0;
     let gameEnding: boolean = false;
     let gameOver: boolean = false;
@@ -138,6 +143,7 @@
     }
 
     let makeCube = (x: number) => {
+        //console.log(x);
         let c = colors[x % 100];
         let a = 1 - x / 1400;
         let val = "background-color: rgba(255, 255, 255, .9)";
@@ -145,6 +151,18 @@
         if (x > 99) val = `background-color: rgba(${c}, ${a})`;
         return val;
     };
+
+    let onShare = (i: number, x: string) => {
+        if(sbi == i && shareTarget == x && shareBoard) {
+          shareBoard = false;
+        }else{
+          sbi = i;
+          shareTarget = x;
+          shareBoard = true;
+          //console.log(sbi, shareTarget);
+          //console.log(scoreboard[shareTarget][sbi].cube);
+        }
+    }
 
     let onEnter = (pI: string) => {
         username = pI;
@@ -256,6 +274,7 @@
         current = 0;
         gameOver = false;
         score = 0;
+        day = 0;
 
 
         let gameState = {
@@ -299,10 +318,12 @@
                 </div>
 
                 <p class="prompt-text">
-                    Welcome! QueueB is a daily spacial puzzle game. Each day you
-                    will recieve a unique queue of blocks and you must decide
-                    where to place them to maximize your score. Future Updates
-                    will add a scoreboard, additional unique blocks, and more!
+                    Welcome! QueueB is a daily spacial puzzle game. Each day everyone
+                    recieves the daily queue of blocks and you must decide
+                    where to place them to maximize your score!  Future updates will
+                    include an all time top scores chart and a 1 vs 1 challenge mode where
+                    you can take turns with a friend competing for the most points on a shared
+                    board!
                 </p>
 
                 <button
@@ -311,16 +332,23 @@
                 >
                     {#if showRules}
                         <p class="prompt-text">
-                            Rules: Nudge and rotate each block you are given
-                            into position. Each square on a block you place is
-                            worth 100pts. Your blocks cannot overlap and
-                            placement will be prevented. The dark grey squares
-                            multiply squares placed on them by 3x. Blocks may
-                            have a unique square which also has a 3x multiplier.
-                            These multipliers can stack to score higher! Click
+                            Nudge and rotate each block you are given
+                            into position.  Once satisfied with a blocks location
+                            click Place and then Confirm!  Each square on the blocks
+                            you confirm will be added to the board scoring at least
+                            100pts. Your blocks cannot be placed on colored squares that you already
+                            occupy and placement will be prevented. The dark grey squares
+                            on the board multiply your colored block squares by 3x when stacked.
+                            Blocks may also have a unique multiplier square which also rewards 3x.
+                            When the unique block square is placed on a grey board square, these
+                            two multipliers can stack for 9x points!  You must balance
+                            maximizing the number of blocks you place on the board with the
+                            position of those multiplier squares on both the board and your blocks
+                            to get the most points!  Once you can no longer place any blocks click
+                            Review Board and then Score Your Game!
                         </p>
                     {:else}
-                        <div class="prompt-text">Touch Here to See Rules</div>
+                        <div class="prompt-text">How To Play? Touch Here!</div>
                     {/if}
                 </button>
 
@@ -429,16 +457,13 @@
                 class="control"
                 disabled={gameOver}
                 on:click={() => (gameEnding = !gameEnding)}
-                >Queueb out: {current}</button
+                >{gameEnding ? 'Keep Playing':'Review Board'}: {current}</button
             >
             <button
                 class="control"
                 disabled={!gameEnding || gameOver}
                 on:click={endGame}>Score Your Game</button
             >
-        </div>
-        <div class="controlRow">
-            <button class="control" on:click={reset}>Dev Reset</button>
         </div>
     </div>
 
@@ -451,8 +476,17 @@
                     <div class="score">Count</div>
                     <div class="score">Score</div>
                 </div>
-                {#each scoreboard.now as sc}
-                    <div class='scoreTile'>
+                {#each scoreboard.now as sc, i}
+                    <div class='scoreTile'
+                        tabindex="0"
+                        role="button"
+                        style="cursor: pointer;"
+                        on:click={()=>onShare(i,'now')}
+                        on:keydown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            onShare(i,'now');
+                        }
+                    }}>
                         <div class="username">{sc.username}</div>
                         <div class="score">{sc.count}</div>
                         <div class="score">{sc.score}</div>
@@ -480,6 +514,31 @@
         </div>
     </div>
 
+    {#if gameOver}
+        <div tabindex="0"
+          role="button"
+          style="cursor: pointer;"
+          on:click={() => { if (shareBoard) onShare(sbi, shareTarget); }}
+          on:keydown={(e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && shareBoard) {
+              onShare(sbi, shareTarget);
+            }
+          }}>
+            <h3>{shareBoard ? 'Click Here to Hide Board Below!' : 'Click Someones Score To View Their Board!'}</h3>
+        </div>
+    {/if}
+
+    {#if gameOver && shareBoard && scoreboard[shareTarget].length > 0}
+        <h2>{`${scoreboard[shareTarget][sbi].username}'s #${sbi+1} Board ${shareTarget == 'now' ? 'Today' : 'Yesterday'}: ${scoreboard[shareTarget][sbi].count} Blocks`}</h2>
+        <div class="cubeGrid" style="--col-count: {cube[0].length}">
+            {#each JSON.parse(scoreboard[shareTarget][sbi].cube) as c, index}
+                {#each c as x, i}
+                    <div class="cube" style={makeCube(x)}></div>
+                {/each}
+            {/each}
+        </div>
+    {/if}
+
     <div class="scores hof">
         <h2>Hall Of Fame</h2>
         <div class='scoreTile underline hof2'>
@@ -499,6 +558,12 @@
         <p>**WIP - Hall of Fame Updates Daily**</p>
     </div>
 
+    <div class="controls">
+        <div class="controlRow">
+            <button class="control" on:click={reset}>Dev Reset</button>
+        </div>
+    </div>
+
     <div class="footer">
         <img
             style="height: 1rem; margin: 1rem 2px 2px 2px"
@@ -513,6 +578,8 @@
 
 <style>
     h1,
+    h2,
+    h3,
     p, .scores{
         font-family: "Roboto", sans-serif;
         text-align: center;
@@ -588,7 +655,7 @@
     .control {
         flex-grow: 1;
         width: 8rem;
-        height: 3rem;
+        height: 4rem;
     }
 
     .footer {
@@ -656,7 +723,7 @@
         flex-direction: row;
         flex-basis: auto;
         width: 100%;
-        padding-bottom: 5em;
+        padding-bottom: 2em;
         margin-bottom: 5em;
         justify-content: space-around;
     }
