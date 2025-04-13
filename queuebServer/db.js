@@ -8,9 +8,9 @@ async function sydb(client) {
         "CREATE TABLE IF NOT EXISTS qb.scores (id UUID, username TEXT, email TEXT, day INT, count INT, score INT, cube TEXT, PRIMARY KEY (day, score, username, id));";
     let blocks =
         "CREATE TABLE IF NOT EXISTS qb.blocks (day INT PRIMARY KEY, blocks list<int>);";
-    let drop = "DROP TABLE qb.blocks;"
+    //let drop = "DROP TABLE qb.blocks;"
 
-    let queries = [keyspace, drop, users, blocks, scores];
+    let queries = [keyspace, users, blocks, scores];
 
     async function executeQueries() {
         for (const query of queries) {

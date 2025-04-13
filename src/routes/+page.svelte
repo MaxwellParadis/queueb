@@ -503,8 +503,17 @@
                     <div class="score">Count</div>
                     <div class="score">Score</div>
                 </div>
-                {#each scoreboard.prev as sc}
-                    <div class='scoreTile'>
+                {#each scoreboard.prev as sc, i}
+                    <div class='scoreTile'
+                        tabindex="0"
+                        role="button"
+                        style="cursor: pointer;"
+                        on:click={()=>onShare(i,'prev')}
+                        on:keydown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            onShare(i,'prev');
+                        }
+                    }}>
                         <div class="username">{sc.username}</div>
                         <div class="score">{sc.count}</div>
                         <div class="score">{sc.score}</div>
