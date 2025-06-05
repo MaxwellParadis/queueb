@@ -1,11 +1,11 @@
 const express = require("express");
-const cassandra = require("cassandra-driver");
+const mariadb = require("mariadb");
 const { v4: uuidv4 } = require("uuid");
 
-const { sydb } = require("./db");
+const { mdb } = require("./db");
 
 const app = express();
-const port = process.env.PORT || 3014;
+const port = process.env.PORT || 3000;
 
 let pScore = [];
 let hof = [];
@@ -51,21 +51,15 @@ let dailyBlocks = [];
 app.use(express.static("dist"));
 app.use(express.json());
 
-// ScyllaDB configuration
-const client = new cassandra.Client({
-    contactPoints: [process.env.SCYLLA_HOST || "localhost"],
-    localDataCenter: "datacenter1", // Replace with your data center name
-});
+require('dotenv').config();
 
-async function connectToScylla() {
-    try {
-        await client.connect();
-        console.log("Connected to ScyllaDB");
-        await sydb(client);
-    } catch (err) {
-        console.error("Failed to connect to ScyllaDB", err);
-    }
-}
+const pool = mariadb.createPool({
+  host: 'localhost',
+	database: process.env.DB,
+	user: process.env.DBU,
+  password: process.env.DBP,
+  connectionLimit: 5
+});
 
 function getDay(add) {
     const date = new Date();
@@ -78,13 +72,20 @@ function getDay(add) {
 }
 
 async function getBlocks(date) {
-    const query = "SELECT * FROM qb.blocks WHERE day = ?";
-    const params = [date];
-    const options = { hints: ["int"] };
-
-    let { rows } = await client.execute(query, params, options);
-
-    return rows;
+  const query = "SELECT * FROM blocks WHERE day = ?";
+  const params = [date];
+  //const options = { hints: ["int"] };
+  let conn;
+  let rows = [];
+  try {
+    conn = await pool.getConnection();
+    rows = await conn.query(query, params);
+  } catch (err){
+    console.log(err);
+  } finally {
+    if (conn) conn.release();
+  }
+  return rows;
 }
 
 async function makeBlocks(date) {
@@ -95,12 +96,19 @@ async function makeBlocks(date) {
     }
     //return randomInts;
 
-    let b = randomInts;
-    const query = "INSERT INTO qb.blocks(day, blocks) VALUES(?,?);";
+    let b = JSON.stringify(randomInts);
+    const query = "INSERT INTO blocks(day, blocks) VALUES(?,?);";
     const params = [date, b];
-    const options = { hints: ["int", "list<int>"] };
-
-    await client.execute(query, params, options);
+    //const options = { hints: ["int", "list<int>"] };
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.query(query, params);
+  } catch (err) {
+    console.error("Database error:", err);
+  } finally {
+    if (conn) conn.release();
+  }
 }
 
 async function initBlocks() {
@@ -120,14 +128,18 @@ async function initBlocks() {
 
 async function prevScore(){
   let day = getDay(-1);
-  let query = "SELECT * FROM qb.scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
+  let query = "SELECT * FROM scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
   let params = [day];
-  let options = {hints: ['int']};
+  //let options = {hints: ['int']};
+  let conn;
   try {
-    let {rows} = await client.execute(query, params, options);
+    conn = await pool.getConnection();
+    let rows = await conn.query(query, params);
     pScore = rows;
   } catch (err) {
     console.error('Prev Score Error:', err);
+  } finally {
+    if (conn) conn.release();
   }
   // let hoQuery = "SELECT * FROM qb.scores ORDER BY score DESC LIMIT 10;";
   // try {
@@ -139,7 +151,7 @@ async function prevScore(){
 }
 
 async function initServer() {
-    await connectToScylla();
+    await mdb(pool);
 
     initBlocks();
     prevScore();
@@ -167,11 +179,13 @@ app.get("/api/blocks", (req, res) => {
 
 app.get("/api/scoreboard", async (req, res) => {
     let day = getDay(0);
-    let query = "SELECT * FROM qb.scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
+    let query = "SELECT * FROM scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
     let params = [day];
-    let options = {hints: ['int']};
+    //let options = {hints: ['int']};
+    let conn;
     try {
-      let {rows} = await client.execute(query, params, options);
+      conn = await pool.getConnection();
+      let rows = await conn.query(query, params);
       //console.log(rows);
       let data = {
         'now': rows,
@@ -183,6 +197,8 @@ app.get("/api/scoreboard", async (req, res) => {
       console.error('Write error:', err);
       console.log('Failed to write data');
       res.status(500).send("Failed to retrieve data: " + err.message);
+    } finally{
+      if (conn) conn.release();
     }
 });
 
@@ -191,28 +207,32 @@ app.post("/api/score", async (req, res) => {
     const id = uuidv4();
     console.log(username, count, score);
     let day = getDay(0);
-    let query = "INSERT INTO qb.scores(id, username, email, day, count, score, cube) VALUES(?,?,?,?,?,?,?)";
+    let query = "INSERT INTO scores(id, username, email, day, count, score, cube) VALUES(?,?,?,?,?,?,?)";
     let params = [id, username, "NA", day, count, score, cube];
-    let options = { hints: ['uuid', 'text', 'text', 'int', 'int', 'int', 'text'] };
+    //let options = { hints: ['uuid', 'text', 'text', 'int', 'int', 'int', 'text'] };
+    let conn;
     try {
-      await client.execute(query, params, options);
+      conn = await pool.getConnection();
+      await conn.query(query, params);
       console.log('Score written successfully');
     } catch (err) {
       console.error('Write error:', err);
       console.log('Failed to write data');
+    } finally {
+      if (conn) conn.release();
     }
     res.send("Score Recorded");
 });
 
-app.get("/api/test", async (req, res) => {
-    try {
-        const query = "SELECT release_version FROM system.local";
-        const result = await client.execute(query);
-        res.send(`ScyllaDB version: ${result.rows[0].release_version}`);
-    } catch (err) {
-        res.status(500).send(`Error querying ScyllaDB: ${err.message}`);
-    }
-});
+// app.get("/api/test", async (req, res) => {
+//     try {
+//         const query = "SELECT release_version FROM system.local";
+//         const result = await client.execute(query);
+//         res.send(`ScyllaDB version: ${result.rows[0].release_version}`);
+//     } catch (err) {
+//         res.status(500).send(`Error querying ScyllaDB: ${err.message}`);
+//     }
+// });
 
 app.listen(port, () => {
     console.log(`App running at http://localhost:${port}`);

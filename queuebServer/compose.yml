@@ -1,14 +1,32 @@
 services:
-    scylla:
-      image: scylladb/scylla:latest
-      container_name: scylla
-      restart: always
-      ports:
-        - "9042:9042"
-      volumes:
-        - /mnt/temp:/var/lib/scylla
-      networks:
-        - scylla-network
+  mariadb:
+    image: mariadb:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DBP}
+      MYSQL_DATABASE: ${DB}
+      MYSQL_USER: ${DBU}
+      MYSQL_PASSWORD: ${DBP}
+    ports:
+      - "3306:3306"
+    networks:
+      - pb-games
+    volumes:
+      - ./data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DBP}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # scylla:
+    #   image: scylladb/scylla:latest
+    #   container_name: scylla
+    #   restart: always
+    #   ports:
+    #     - "9042:9042"
+    #   volumes:
+    #     - /mnt/temp:/var/lib/scylla
+    #   networks:
+    #     - scylla-network
     # healthcheck:
     #   test: ["CMD-SHELL", "curl -f http://localhost:10000/metrics || exit 1"]
     #   interval: 30s
@@ -34,4 +52,4 @@ services:
 #     scylla_data1:
 
 networks:
-    scylla-network:
+  pb-games:

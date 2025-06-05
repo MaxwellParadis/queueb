@@ -291,6 +291,7 @@
 
     axios.get('/api/scoreboard').then((res) => {
         scoreboard = res.data;
+        console.log(scoreboard);
     })
     .catch((error) => {
         if(error.code != 'ERR_INVALID_URL') console.error('Error fetching scoreboard:', error);
@@ -540,7 +541,7 @@
     {#if gameOver && shareBoard && scoreboard[shareTarget].length > 0}
         <h2>{`${scoreboard[shareTarget][sbi].username}'s #${sbi+1} Board ${shareTarget == 'now' ? 'Today' : 'Yesterday'}: ${scoreboard[shareTarget][sbi].count} Blocks`}</h2>
         <div class="cubeGrid" style="--col-count: {cube[0].length}">
-            {#each JSON.parse(scoreboard[shareTarget][sbi].cube) as c, index}
+            {#each scoreboard[shareTarget][sbi].cube as c, index}
                 {#each c as x, i}
                     <div class="cube" style={makeCube(x)}></div>
                 {/each}
