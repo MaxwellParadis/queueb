@@ -52,11 +52,11 @@ app.use(express.static("dist"));
 app.use(express.json());
 
 require('dotenv').config();
+const dbn = process.env.QDB || 'qb';
 
 const pool = mariadb.createPool({
-  host: 'localhost',
-	database: process.env.DB,
-	user: process.env.DBU,
+  host: process.env.DBH,
+  user: process.env.DBU || 'root',
   password: process.env.DBP,
   connectionLimit: 5
 });
@@ -72,7 +72,7 @@ function getDay(add) {
 }
 
 async function getBlocks(date) {
-  const query = "SELECT * FROM blocks WHERE day = ?";
+  const query = `SELECT * FROM ${dbn}.blocks WHERE day = ?`;
   const params = [date];
   //const options = { hints: ["int"] };
   let conn;
@@ -97,7 +97,7 @@ async function makeBlocks(date) {
     //return randomInts;
 
     let b = JSON.stringify(randomInts);
-    const query = "INSERT INTO blocks(day, blocks) VALUES(?,?);";
+    const query = `INSERT INTO ${dbn}.blocks(day, blocks) VALUES(?,?);`;
     const params = [date, b];
     //const options = { hints: ["int", "list<int>"] };
   let conn;
@@ -128,7 +128,7 @@ async function initBlocks() {
 
 async function prevScore(){
   let day = getDay(-1);
-  let query = "SELECT * FROM scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
+  let query = `SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 10;`;
   let params = [day];
   //let options = {hints: ['int']};
   let conn;
@@ -151,7 +151,7 @@ async function prevScore(){
 }
 
 async function initServer() {
-    await mdb(pool);
+    await mdb(pool, dbn);
 
     initBlocks();
     prevScore();
@@ -179,7 +179,7 @@ app.get("/api/blocks", (req, res) => {
 
 app.get("/api/scoreboard", async (req, res) => {
     let day = getDay(0);
-    let query = "SELECT * FROM scores WHERE day = ? ORDER BY score DESC LIMIT 10;";
+    let query = `SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 10;`;
     let params = [day];
     //let options = {hints: ['int']};
     let conn;
@@ -207,7 +207,7 @@ app.post("/api/score", async (req, res) => {
     const id = uuidv4();
     console.log(username, count, score);
     let day = getDay(0);
-    let query = "INSERT INTO scores(id, username, email, day, count, score, cube) VALUES(?,?,?,?,?,?,?)";
+    let query = `INSERT INTO ${dbn}.scores(id, username, email, day, count, score, cube) VALUES(?,?,?,?,?,?,?)`;
     let params = [id, username, "NA", day, count, score, cube];
     //let options = { hints: ['uuid', 'text', 'text', 'int', 'int', 'int', 'text'] };
     let conn;

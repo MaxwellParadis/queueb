@@ -1,13 +1,13 @@
 //DB SETUP
-async function mdb(pool) {
+async function mdb(pool, dbn) {
     let db =
-        "CREATE DATABASE IF NOT EXISTS qb;";
+        `CREATE DATABASE IF NOT EXISTS ${dbn};`;
     let users =
-        "CREATE TABLE IF NOT EXISTS users (id CHAR(36) PRIMARY KEY, username VARCHAR(30), email VARCHAR(99));";
+        `CREATE TABLE IF NOT EXISTS ${dbn}.users (id CHAR(36) PRIMARY KEY, username VARCHAR(30), email VARCHAR(99));`;
     let scores =
-        "CREATE TABLE IF NOT EXISTS scores (id CHAR(36) PRIMARY KEY, username VARCHAR(30), email VARCHAR(99), day INT, count INT, score INT, cube JSON);";
+        `CREATE TABLE IF NOT EXISTS ${dbn}.scores (id CHAR(36) PRIMARY KEY, username VARCHAR(30), email VARCHAR(99), day INT, count INT, score INT, cube JSON);`;
     let blocks =
-        "CREATE TABLE IF NOT EXISTS blocks (day INT PRIMARY KEY, blocks JSON);";
+        `CREATE TABLE IF NOT EXISTS ${dbn}.blocks (day INT PRIMARY KEY, blocks JSON);`;
     //let drop = "DROP TABLE qb.blocks;"
 
     let queries = [ db, users, blocks, scores];
