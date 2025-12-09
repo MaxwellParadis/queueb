@@ -58,7 +58,8 @@ const pool = mariadb.createPool({
   host: process.env.DBH,
   user: process.env.DBU || 'root',
   password: process.env.DBP,
-  connectionLimit: 5
+  connectionLimit: 5,
+  bigIntAsNumber: true
 });
 
 function getDay(add) {
@@ -222,6 +223,45 @@ app.post("/api/score", async (req, res) => {
       if (conn) conn.release();
     }
     res.send("Score Recorded");
+});
+
+app.post("/api/streak", async (req, res) => {
+    let conn;
+    let query = `SELECT
+    COALESCE(SUM(is_consecutive), 0) +
+    (SELECT COUNT(*) FROM ${dbn}.scores WHERE username = ? AND day = ?) AS streak
+    FROM (
+      SELECT
+      IF(STR_TO_DATE(day, '%y%m%d') = @expected, 1, 0) AS is_consecutive,
+          @expected := IF(STR_TO_DATE(day, '%y%m%d') = @expected,
+                          DATE_SUB(@expected, INTERVAL 1 DAY),
+                          @expected)
+          FROM ${dbn}.scores
+          CROSS JOIN (SELECT @expected := STR_TO_DATE(?, '%y%m%d')) init
+          WHERE username = ?
+          AND day <= ?
+          ORDER BY day DESC
+    ) t
+    WHERE is_consecutive = 1;`;
+    try {
+      let d0 = getDay(0)
+      let d1 = getDay(-1)
+      let u = req.body.username
+      let params = [u, d0, d1, u, d1];
+      conn = await pool.getConnection();
+      let rows = await conn.query(query, params);
+      //console.log(rows);
+      let data = {
+        'streak': rows[0].streak
+      }
+      res.json(data);
+    } catch (err) {
+      console.error('Write error:', err);
+      console.log('Failed to write data');
+      res.status(500).send("Failed to retrieve data: " + err.message);
+    } finally {
+      if (conn) conn.release();
+    }
 });
 
 // app.get("/api/test", async (req, res) => {
