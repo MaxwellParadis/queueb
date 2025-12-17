@@ -8,6 +8,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 let pScore = [];
+let pWinners = [];
 let hof = [];
 
 let blockList = [
@@ -142,13 +143,33 @@ async function prevScore(){
   } finally {
     if (conn) conn.release();
   }
-  // let hoQuery = "SELECT * FROM qb.scores ORDER BY score DESC LIMIT 10;";
-  // try {
-  //   let {rows} = await client.execute(hoQuery);
-  //   hof = rows;
-  // } catch (err) {
-  //   console.error('HoF Score Error:', err);
-  // }
+
+  let hquery = `SELECT s.* FROM ${dbn}.scores s
+  INNER JOIN (
+    SELECT username, MAX(score) AS max_score FROM ${dbn}.scores GROUP BY username ORDER BY max_score DESC LIMIT 10
+  ) AS top_users ON s.username = top_users.username AND s.score = top_users.max_score ORDER BY s.score DESC;`;
+  let hparams = [];
+  try {
+    conn = await pool.getConnection();
+    let rows = await conn.query(hquery, hparams);
+    hof = rows;
+  } catch (err) {
+    console.error('HoF Score Error:', err);
+  } finally {
+    if (conn) conn.release();
+  }
+
+  let wquery = `(SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1) UNION ALL (SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1) UNION ALL (SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1) UNION ALL (SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1) UNION ALL (SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1) UNION ALL (SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1) UNION ALL (SELECT * FROM ${dbn}.scores WHERE day = ? ORDER BY score DESC LIMIT 1);`;
+  let wparams = [getDay(-1),getDay(-2),getDay(-3),getDay(-4),getDay(-5),getDay(-6),getDay(-7)];;
+  try {
+    conn = await pool.getConnection();
+    let rows = await conn.query(wquery, wparams);
+    pWinners = rows;
+  } catch (err) {
+    console.error('Weekly winners Score Error:', err);
+  } finally {
+    if (conn) conn.release();
+  }
 }
 
 async function initServer() {
@@ -192,6 +213,7 @@ app.get("/api/scoreboard", async (req, res) => {
         'now': rows,
         'prev': pScore,
         'hof': hof,
+        'winners': pWinners
       }
       res.json(data);
     } catch (err) {

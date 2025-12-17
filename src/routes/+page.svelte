@@ -10,6 +10,7 @@
 
     let anonymous = true;
     let signup = false;
+    let help = false;
 
     let dev = true;
 
@@ -100,6 +101,13 @@
 
     let sbs: any[] = [];
     let scoreboard = {now: sbs, prev: sbs, hof: sbs };
+
+    let labelMap = {
+        'now': 'Today',
+        'yesterday': 'Yesterday',
+        'hof': '',
+        'winners': 'Winner'
+    }
 
     export let daily: any[] = Array.from({ length: 25 }, (_, index) => index);
 
@@ -335,6 +343,29 @@
         if (setup) gameSetup();
     }
 
+    async function onReVer() {
+        try {
+        const res = await axios.post(`${authAPI}/reverify`, {
+            email,
+        });
+        message = res.data.message;
+        } catch (err) {
+        message = err.response?.data?.error || "Verification failed";
+        }
+    }
+
+    async function onNewPass() {
+        try {
+        let newPassword = password
+        const res = await axios.post(`${authAPI}/request-reset`, {
+            email,
+            newPassword
+        });
+        message = res.data.message;
+        } catch (err) {
+        message = err.response?.data?.error || "Password Reset failed";
+        }
+    }
 
     function onLogout(){
         localStorage.setItem("accessToken", null);
@@ -569,8 +600,8 @@
                     </button>
                     <h4 style="color: rgb(40,60,80)">{streak > 0 ? `${streak} Day Streak!`: null}</h4>
                 {:else}
-                    <button class='prompt-input' on:click={() => signup = !signup}>
-                        <b style="color: rgb(40,60,80)">{ signup ? 'Click for Login' : 'Click to Sign Up'}</b>
+                    <button class='prompt-input' on:click={() => {signup = !signup; help = false}}>
+                        <b style="color: rgb(40,60,80)">{ signup ? 'Go to Login!' : 'Sign Up!'}</b>
                     </button>
                     <input
                         type="text"
@@ -602,9 +633,27 @@
                             class="prompt-input"
                         />
                     {/if}
-                    <button disabled={promptInput.length < 3 || (vpass !== password && signup) || password == 0 || (email < 4 && signup)} class="prompt-input prompt-button" on:click={() => (signup ? onSignup : onLogin)(promptInput.replace(/[^A-Za-z0-9]/g, ""))}>
-                        { signup ? 'SUBMIT' : 'LOGIN'}
+                    {#if !help}
+                        <button disabled={promptInput.length < 3 || (vpass !== password && signup) || password == 0 || (email < 4 && signup)} class="prompt-input prompt-button" on:click={() => (signup ? onSignup : onLogin)(promptInput.replace(/[^A-Za-z0-9]/g, ""))}>
+                            { signup ? 'SUBMIT' : 'LOGIN'}
+                        </button>
+                    {/if}
+                    <button class='prompt-input' on:click={() => {help = !help; signup = true;}}>
+                        <b style="color: rgb(40,60,80);">{help ? 'Hide' : 'Show'} Sign up & Login help!</b>
                     </button>
+
+                    {#if help && signup}
+                        <b style="color: rgb(40,60,80)">Please Enter your email above to request a new Verification Link.</b>
+                        <br>
+                        <button disabled={email < 4} class='prompt-input prompt-button' on:click={onReVer}>
+                            <b>Resend Verification Email</b>
+                        </button>
+                        <b style="color: rgb(40,60,80)">To Update your Password, Please complete fields above and approve the change in the following email verification</b>
+                        <br>
+                        <button disabled={(vpass !== password) || password == 0 || (email < 4)} class='prompt-input prompt-button' on:click={onNewPass} >
+                            <b>Update Password</b>
+                        </button>
+                    {/if}
                 {/if}
                 <h4 style="color: rgb(40,60,80)">
                 {message} <br>
@@ -619,112 +668,116 @@
             </div>
         </div>
     {/if}
-
-    {#if username != undefined || start == false}
-        <div class="header" style="text-align: center">
-            <div class="footer">
-                <img style="height: 2.9em; margin: 1em 2px 0px 0px;" src="/PBS_LOGO_NT.svg" alt="LOGO"/>
-                <h1 style="transform: scaleY(2); display: inline-block;">QUEUEB</h1>
-            </div>
-            <h3 style="margin: .5em">Good Luck {username}!</h3>
-        </div>
-    {/if}
-
-    <div class="cubeGrid" style="--col-count: {cube[0].length}">
-        {#each cube as c, index}
-            {#each c as x, i}
-                <div class="cube" style={makeCube(x)}>
-                    {#if root[0] == index && root[1] == i && !gameEnding && !gameOver && start}
-                        <div class="activeBlock">
-                            {#each block[rotation] as b}
-                                <div
-                                    class="{b > 0 ? 'blocks' : 'noblocks'} {b ==
-                                    3
-                                        ? 'b2'
-                                        : null}"
-                                    style={b > 0
-                                        ? `background-color: rgba(${colors[current]}, 0.7)`
-                                        : ""}
-                                >
-                                    {#if b == 2}{/if}
-                                </div>
-                            {/each}
-                        </div>
-                    {/if}
+    <div class="qb">
+        {#if username != undefined || start == false}
+            <div class="header" style="text-align: center">
+                <div class="footer">
+                    <img style="height: 2.9em; margin: 1em 2px 0px 0px;" src="/PBS_LOGO_NT.svg" alt="LOGO"/>
+                    <h1 style="transform: scaleY(2); display: inline-block;">QUEUEB</h1>
                 </div>
+                <h3 style="margin: .5em">Good Luck {username}!</h3>
+            </div>
+        {/if}
+
+        <div class="cubeGrid" style="--col-count: {cube[0].length}">
+            {#each cube as c, index}
+                {#each c as x, i}
+                    <div class="cube" style={makeCube(x)}>
+                        {#if root[0] == index && root[1] == i && !gameEnding && !gameOver && start}
+                            <div class="activeBlock">
+                                {#each block[rotation] as b}
+                                    <div
+                                        class="{b > 0 ? 'blocks' : 'noblocks'} {b ==
+                                        3
+                                            ? 'b2'
+                                            : null}"
+                                        style={b > 0
+                                            ? `background-color: rgba(${colors[current]}, 0.7)`
+                                            : ""}
+                                    >
+                                        {#if b == 2}{/if}
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {/each}
             {/each}
-        {/each}
+        </div>
+
+        {#if gameOver}
+            <h1>Score: {score}</h1>
+            <h1>Thanks For Playing!</h1>
+        {/if}
+
+        <div class="controls">
+            <div class="controlRow">
+                <button
+                    class="control"
+                    on:click={() => rotate(-1)}
+                    disabled={locked}>Rotate L</button
+                >
+                <button
+                    class="control"
+                    on:click={() => nudgeY(-1)}
+                    disabled={locked}>Up</button
+                >
+                <button class="control" on:click={() => rotate(1)} disabled={locked}
+                    >Rotate R</button
+                >
+            </div>
+            <div class="controlRow">
+                <button
+                    class="control"
+                    on:click={() => nudgeX(-1)}
+                    disabled={locked}>Left</button
+                >
+                <button class="control" on:click={() => nudgeY(1)} disabled={locked}
+                    >Down</button
+                >
+                <button class="control" on:click={() => nudgeX(1)} disabled={locked}
+                    >Right</button
+                >
+            </div>
+            <div class="controlRow">
+                <button
+                    class="control"
+                    disabled={gameOver}
+                    on:click={() => place(0)}
+                    >{!locked ? "Place" : "Pick Up"}</button
+                >
+                <button
+                    class="control"
+                    disabled={!locked || gameOver}
+                    on:click={() => commit(0)}>Confirm</button
+                >
+            </div>
+            <div class="controlRow">
+                <button
+                    class="control"
+                    disabled={gameOver}
+                    on:click={() => (gameEnding = !gameEnding)}
+                    >{gameEnding ? 'Keep Playing':'Review Board'}: {current}</button
+                >
+                <button
+                    class="control"
+                    disabled={!gameEnding || gameOver}
+                    on:click={endGame}>Score Your Game</button
+                >
+            </div>
+        </div>
+
+        {#if userAuth && userAuth.hasAuth == true}
+            <h2>{username}'s Current Streak: {streak}</h2>
+        {/if}
     </div>
 
-    {#if gameOver}
-        <h1>Score: {score}</h1>
-        <h1>Thanks For Playing!</h1>
-    {/if}
-
-    <div class="controls">
-        <div class="controlRow">
-            <button
-                class="control"
-                on:click={() => rotate(-1)}
-                disabled={locked}>Rotate L</button
-            >
-            <button
-                class="control"
-                on:click={() => nudgeY(-1)}
-                disabled={locked}>Up</button
-            >
-            <button class="control" on:click={() => rotate(1)} disabled={locked}
-                >Rotate R</button
-            >
-        </div>
-        <div class="controlRow">
-            <button
-                class="control"
-                on:click={() => nudgeX(-1)}
-                disabled={locked}>Left</button
-            >
-            <button class="control" on:click={() => nudgeY(1)} disabled={locked}
-                >Down</button
-            >
-            <button class="control" on:click={() => nudgeX(1)} disabled={locked}
-                >Right</button
-            >
-        </div>
-        <div class="controlRow">
-            <button
-                class="control"
-                disabled={gameOver}
-                on:click={() => place(0)}
-                >{!locked ? "Place" : "Pick Up"}</button
-            >
-            <button
-                class="control"
-                disabled={!locked || gameOver}
-                on:click={() => commit(0)}>Confirm</button
-            >
-        </div>
-        <div class="controlRow">
-            <button
-                class="control"
-                disabled={gameOver}
-                on:click={() => (gameEnding = !gameEnding)}
-                >{gameEnding ? 'Keep Playing':'Review Board'}: {current}</button
-            >
-            <button
-                class="control"
-                disabled={!gameEnding || gameOver}
-                on:click={endGame}>Score Your Game</button
-            >
-        </div>
-    </div>
-
-    {#if userAuth && userAuth.hasAuth == true}
-        <h2>{username}'s Current Streak: {streak}</h2>
-    {/if}
+    <h2>Top Scores</h2>
 
     <div class='scores'>
+
         <div class="fifty">
-            <h2>Todays Top 10</h2>
+            <h2>Today</h2>
             <div>
                 <div class='scoreTile underline'>
                     <div class="username">Player</div>
@@ -751,7 +804,7 @@
         </div>
 
         <div class="fifty">
-            <h2>Last Top 10</h2>
+            <h2>Yesterday</h2>
             <div>
                 <div class='scoreTile underline'>
                     <div class="username">Player</div>
@@ -792,16 +845,48 @@
         </div>
     {/if}
 
-    {#if gameOver && shareBoard && scoreboard[shareTarget].length > 0}
-        <h2>{`${scoreboard[shareTarget][sbi].username}'s #${sbi+1} Board ${shareTarget == 'now' ? 'Today' : 'Yesterday'}: ${scoreboard[shareTarget][sbi].count} Blocks`}</h2>
-        <div class="cubeGrid" style="--col-count: {cube[0].length}">
-            {#each scoreboard[shareTarget][sbi].cube as c, index}
-                {#each c as x, i}
-                    <div class="cube" style={makeCube(x)}></div>
+    <div class="qb">
+        {#if gameOver && shareBoard && scoreboard[shareTarget].length > 0}
+            <h2>{`${scoreboard[shareTarget][sbi].username}'s ${shareTarget == 'winners' ? scoreboard[shareTarget][sbi].day.toString().replace(
+    /(\w{2})(\w{2})(\w{2})/, '$2.$3.$1') : `#${sbi+1}`} Board ${labelMap[shareTarget] || `on ${scoreboard[shareTarget][sbi].day.toString().replace(
+    /(\w{2})(\w{2})(\w{2})/, '$2.$3.$1')}` || ''}: ${scoreboard[shareTarget][sbi].count} Blocks`}</h2>
+            <div class="cubeGrid" style="--col-count: {cube[0].length}">
+                {#each scoreboard[shareTarget][sbi].cube as c, index}
+                    {#each c as x, i}
+                        <div class="cube" style={makeCube(x)}></div>
+                    {/each}
                 {/each}
-            {/each}
+            </div>
+        {/if}
+    </div>
+
+    <div class="scores hof">
+        <h2>Winners of the Week</h2>
+        <div class='scoreTile underline hof2'>
+            <div class="username">Player</div>
+            <div class="score">Date</div>
+            <div class="score">Count</div>
+            <div class="score">Score</div>
         </div>
-    {/if}
+        {#each scoreboard.winners as sc, i}
+            <div class='scoreTile hof2'
+                    tabindex="0"
+                    role="button"
+                    style="cursor: pointer;"
+                    on:click={()=>onShare(i,'winners')}
+                    on:keydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        onShare(i,'winners');
+                    }
+                }}>
+                <div class="username">{sc.username}</div>
+                <div class="score">{sc.day.toString().replace(
+  /(\w{2})(\w{2})(\w{2})/, '$2.$3.$1')}</div>
+                <div class="score">{sc.count}</div>
+                <div class="score">{sc.score}</div>
+            </div>
+        {/each}
+    </div>
 
     <div class="scores hof">
         <h2>Hall Of Fame</h2>
@@ -811,15 +896,24 @@
             <div class="score">Count</div>
             <div class="score">Score</div>
         </div>
-        {#each scoreboard.hof as sc}
-            <div class='scoreTile hof2'>
+        {#each scoreboard.hof as sc, i}
+            <div class='scoreTile hof2'
+                    tabindex="0"
+                    role="button"
+                    style="cursor: pointer;"
+                    on:click={()=>onShare(i,'hof')}
+                    on:keydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        onShare(i,'hof');
+                    }
+                }}>
                 <div class="username">{sc.username}</div>
-                <div class="score">{sc.day}</div>
+                <div class="score">{sc.day.toString().replace(
+  /(\w{2})(\w{2})(\w{2})/, '$2.$3.$1')}</div>
                 <div class="score">{sc.count}</div>
                 <div class="score">{sc.score}</div>
             </div>
         {/each}
-        <p>**WIP - Hall of Fame Updates Daily**</p>
     </div>
 
     <div class="footer">
@@ -829,13 +923,34 @@
             alt="LOGO"
         />
         <a href="https://studio.paradisbend.com">
-            <p>Paradis Bend Studio | QueueB</p>
+            <p style="font-size: 1rem;">Paradis Bend Studio | QueueB</p>
         </a>
     </div>
 </div>
 
 <style>
-    h1,h2,h3,h4,b,p, .scores{
+
+    div,b,p,a,input{
+        font-size: clamp(.5rem, 3vw, 2rem);
+    }
+
+    h2{
+        font-size: clamp(1rem, 6vw, 3.5rem);
+    }
+
+    h3{
+        font-size: clamp(.8rem, 5vw, 3rem);
+    }
+
+    h4{
+        font-size: clamp(.6rem, 4vw, 2.5rem);
+    }
+
+    button{
+        font-size: clamp(.6rem, 4vw, 1.5rem);
+    }
+
+    h1,h2,h3,h4,b,p, .scoreTile{
         font-family: "Roboto", sans-serif;
         text-align: center;
         color: white;
@@ -849,11 +964,15 @@
 
     .queueb {
         margin: auto;
-        width: 30rem;
         max-width: 100vw;
         text-align: center;
     }
-
+    .qb{
+        width: 30rem;
+        margin:auto;
+        text-align: center;
+        max-width: 100vw;
+    }
     .cubeGrid {
         display: grid;
         grid-template-columns: repeat(var(--col-count), minmax(1rem, 1fr));
@@ -996,8 +1115,11 @@
     }
 
     .scoreTile {
-        display: flex;
-        flex-direction: row;
+        display: grid;
+        grid-template-columns: 1.5fr .4fr .4fr;
+        gap: 1vw;
+        padding: 8p1x 0;
+        text-wrap: nowrap;
         width: 80vw;
         max-width: 12em;
     }
@@ -1010,7 +1132,7 @@
         text-align: left;
     }
     .underline {
-        border-bottom: 2px solid #ccc;
+        border-bottom: 4px solid #ccc;
     }
 
     .hof{
@@ -1021,6 +1143,7 @@
         width: 90%;
         max-width: 90%;
         align-self: center;
+        grid-template-columns: 1.5fr 1fr .4fr .4fr;
     }
     .rborder {
         border:1px solid red;
